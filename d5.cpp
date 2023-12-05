@@ -99,14 +99,21 @@ seed_map populate_map(const std::vector<std::string>& lines) {
     return seed_map;
 }
 
-std::stack<unsigned long> find_destinations(int source, const std::vector<mapping>& mappings, int depth = 0) {
+void find_destinations(const std::vector<mapping>& mappings, std::stack<unsigned long> destinations, int depth = 0) {
+    int destionation = source;
+    for(const auto& mapping : mappings) {
+        if(depth == mappings.size() - 1) {
 
+        }
+    }
+    destinations.push(destionation);
 }
 
 int solve_part_1(const seed_map& seed_map) {
-
+    std::vector<std::stack<unsigned long>> seed_destinations{};
     for(const auto seed : seed_map.seeds) {
-
+        seed_destinations[seed].push(seed);
+        find_destinations(seed_map.mappings, seed_destinations[seed]);
     }
 }
 
