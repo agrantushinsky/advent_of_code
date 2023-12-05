@@ -99,22 +99,15 @@ seed_map populate_map(const std::vector<std::string>& lines) {
     return seed_map;
 }
 
-typedef std::unordered_map<unsigned long, std::stack<unsigned long>> seed_mappings;
+std::stack<unsigned long> find_destinations(int source, const std::vector<mapping>& mappings, int depth = 0) {
 
-void find_mappings(const seed_map& seed_map, seed_mappings& mappings, int depth) {
-    for(const auto& map : seed_map.mappings[depth].ranges) {
-    }
-}
-
-void find_mappings(const seed_map& seed_map, seed_mappings& mappings) {
-    find_mappings(seed_map, mappings, 0);
 }
 
 int solve_part_1(const seed_map& seed_map) {
-    seed_mappings mappings{};
-    find_mappings(seed_map, mappings);
 
+    for(const auto seed : seed_map.seeds) {
 
+    }
 }
 
 int main() {
