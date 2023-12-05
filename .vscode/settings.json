@@ -1,6 +1,8 @@
 {
     "files.associations": {
         "xutility": "cpp",
-        "xstring": "cpp"
+        "xstring": "cpp",
+        "iosfwd": "cpp",
+        "vector": "cpp"
     }
 }
