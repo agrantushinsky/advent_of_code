@@ -7,9 +7,10 @@
 #include <functional>
 #include <set>
 
-const std::unordered_map<char, int> card_strength = {{ 
-    'A', 'K', 'Q', 'J', 'T', '9', '8', '7', '6', '5', '4', '3', '2'
-}};
+const std::unordered_map<char, int> card_strength = { 
+    { 'A', 12 }, { 'K', 11 }, { 'Q', 10 }, { 'J', 9 }, { 'T', 8 }, { '9', 7 }, { '8', 6 }, 
+    { '7', 5 }, { '6', 4 }, { '5', 3 }, { '4', 2}, { '3', 1 }, {'2', 0 }
+};
 
 enum class hand_type {
     HighCard,
@@ -65,7 +66,7 @@ hand_type get_hand_type(const std::unordered_map<char, int>& hand) {
             return hand_type::FullHouse;
         } 
         return hand_type::TwoPair;
-    } else if(pairs == 1) {
+    } else if(pairs == 1 && type != hand_type::ThreeOfAKind) {
         return hand_type::OnePair;
     }
 
@@ -95,13 +96,26 @@ std::vector<hand> parse_hands(const std::vector<std::string> &lines) {
 
 int solve_part_1(std::vector<hand>& hands) {
     const auto strength_order = [](hand h1, hand h2) { 
-        return h1.type > h2.type; 
+        if(h1.type != h2.type) {
+            return h1.type < h2.type;
+        } else {
+            // Lets just assume both hands have the number of cards.
+            for(int i = 0; i < h1.raw_cards.length(); i++) {
+                char h1c = h1.raw_cards[i];
+                char h2c = h2.raw_cards[i];
+                if(card_strength.at(h1c) != card_strength.at(h2c)) {
+                    return card_strength.at(h1c) < card_strength.at(h2c);
+                }
+            }
+        }
+        return false;
     };
     std::sort(hands.begin(), hands.end(), strength_order);
 
     int sum = 0;
     for(int i = 0; i < hands.size(); i++) {
         const auto& hand = hands[i];
+        std::cout << hand.raw_cards << " has rank " << i + 1 << "\n";
         sum += hand.bet * (i + 1);
     }
 
