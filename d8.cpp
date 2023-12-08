@@ -66,17 +66,16 @@ int solve_part_1(const camel_map& map, const location_code& curr, int steps = 0)
 struct part_2_metadata {
     location_code current_location;
     int first_z_steps;
-    int cycle_len;
 };
 
-int solve_part_2(const camel_map& map) {
+unsigned long long solve_part_2(const camel_map& map) {
     std::vector<part_2_metadata> locations{};
     
     // start with all nodes ending with 'A'
     for(const auto&[curr, loc] : map.map) {
         if(curr.ends_with('A')) {
             part_2_metadata data{};
-            data.first_z_steps = data.cycle_len = -1;
+            data.first_z_steps = -1;
             data.current_location = curr;
             locations.push_back(data);
         }
@@ -85,7 +84,7 @@ int solve_part_2(const camel_map& map) {
     int steps = 0;
 
     const auto search_complete = [](part_2_metadata metadata) {
-        return metadata.cycle_len != -1;
+        return metadata.first_z_steps != -1;
     };
 
     while(!std::all_of(locations.begin(), locations.end(), search_complete)) {
@@ -95,9 +94,6 @@ int solve_part_2(const camel_map& map) {
             if(loc.current_location.ends_with('Z')) {
                 if(loc.first_z_steps == -1) {
                     loc.first_z_steps = steps;
-                } else {
-                    loc.cycle_len = steps - loc.first_z_steps;
-                    continue;
                 }
             }
 
@@ -107,20 +103,9 @@ int solve_part_2(const camel_map& map) {
         steps++;
     }
 
-    unsigned long long cycle_product = 1;
-    cycle_product = std::accumulate(
-        locations.begin(), 
-        locations.end(), 
-        1,
-        [](unsigned long long a, const part_2_metadata& r) { return std::lcm((unsigned long long)r.cycle_len, a); }
-    );
-
-    return std::lcm(
-        std::max_element(locations.begin(), locations.end(), [](const part_2_metadata l, const part_2_metadata r) { return l.first_z_steps < r.first_z_steps; })->first_z_steps,
-        cycle_product
-    );
+    return std::accumulate(locations.begin(), locations.end(), (unsigned long long)1,
+        [](unsigned long long a, const part_2_metadata& loc) { return std::lcm(a, loc.first_z_steps); });
 }
-// 820848367 low
 
 int main() {
     std::string temp;
