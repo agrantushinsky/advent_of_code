@@ -9,9 +9,9 @@
                 "/EHsc",
                 "/nologo",
                 "/std:c++20",
-                "/Fe${fileDirname}/bin\\${fileBasenameNoExtension}.exe",
-                "/Fo${fileDirname}/bin\\",
-                "/Fd${fileDirname}/bin\\",
+                "/Fe${fileDirname}/target\\${fileBasenameNoExtension}.exe",
+                "/Fo${fileDirname}/target\\",
+                "/Fd${fileDirname}/target\\",
                 "${file}"
             ],
             "options": {
