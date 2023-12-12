@@ -1,11 +1,13 @@
 use std::io;
 
+#[derive(Debug)]
 enum Spring {
     Operational,
     Damaged,
     Unknown
 }
 
+#[derive(Debug)]
 struct Record {
     damaged_ranges: Vec<u32>,
     springs: Vec<Spring>
