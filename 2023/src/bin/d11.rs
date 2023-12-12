@@ -1,4 +1,4 @@
-use std::io;
+use std::{io, vec};
 
 #[derive(Debug, PartialEq, Clone)]
 enum Value {
@@ -9,13 +9,16 @@ enum Value {
 #[derive(Debug)]
 struct Universe {
     grid: Vec<Vec<Value>>,
+    expanded_rows: Vec<usize>,
+    expanded_columns: Vec<usize>,
+    expansion_factor: usize
 }
 
 impl Universe {
-    fn new(input: &String) -> Self {
+    fn new(input: &String, expansion_factor: usize) -> Self {
         use Value::*;
         
-        let grid = 
+        let grid: Vec<Vec<Value>> = 
             input.lines()
             .map(|line| line.chars().map(|c| {
                 match c {
@@ -24,35 +27,41 @@ impl Universe {
                     _ => unimplemented!("value not found")
                 }
             }).collect()).collect();
-        
+
+        let mut expanded_rows: Vec<usize> = vec![];
+        let mut expanded_columns: Vec<usize> = vec![];
+
+        for (y, row) in grid.iter().enumerate() {
+            if row.iter().all(|c| *c == Value::Empty) {
+                expanded_rows.push(y)
+            }
+        } 
+
+        for x in 0..grid[0].len() {
+            if grid.iter().all(|r| r[x] == Value::Empty) {
+                expanded_columns.push(x);
+            }
+        }
+
         Universe {
-            grid
+            grid,
+            expanded_rows,
+            expanded_columns,
+            expansion_factor
         }
     }
 
-    fn expand(&mut self) {
-        let mut height = self.grid.len();
-        let mut y = 0;
-        while y < height {
-            let row = self.grid.get(y).unwrap();
-            if row.iter().all(|c| *c == Value::Empty) {
-                self.grid.insert(y, row.to_vec());
-                height += 1;
-                y += 1;
-            }
-            y += 1;
-        } 
+    fn get_real_point(&self, point: (usize, usize)) -> (usize, usize) {
+        let convert = |o_coordinate: usize, exps: &Vec<usize>| -> usize {
+            let applicable_expansions: Vec<_> = exps.iter()
+                .filter(|ex| o_coordinate > **ex).collect();
 
-        let mut width = self.grid[0].len();
-        let mut x = 0;
-        while x < width {
-            if self.grid.iter().all(|r| r[x] == Value::Empty) {
-                self.grid.iter_mut().for_each(|row| row.insert(x, Value::Empty));
-                width += 1;
-                x += 1;
-            }
-            x += 1;
-        }
+            let new_coordinate = o_coordinate + (applicable_expansions.len() * self.expansion_factor) - applicable_expansions.len();
+
+            new_coordinate
+        };
+        
+        (convert(point.0, &self.expanded_columns), convert(point.1, &self.expanded_rows))
     }
 
     fn get_galaxies(&self) -> Vec<(usize, usize)> {
@@ -61,7 +70,7 @@ impl Universe {
         for (y, row) in self.grid.iter().enumerate() {
             for (x, value) in row.iter().enumerate() {
                 if *value == Value::Galaxy {
-                    points.push((x, y));
+                    points.push(self.get_real_point((x, y)));
                 }
             }
         }
@@ -70,33 +79,15 @@ impl Universe {
     }
 }
 
-impl ToString for Universe {
-    fn to_string(&self) -> String {
-        use Value::*;
-        // This is probably awful. Oh well.
-        let out = self.grid.iter().
-            map(|line| line.iter().fold(String::new(), |a, v| {
-                a + match v {
-                    Empty => ".",
-                    Galaxy => "#"
-                }
-            })).fold(String::new(), |a, l| {
-                a + &l + "\n"
-            });
-        out
-    }
-}
-
 fn calculate_distance(a: &(usize, usize), b: &(usize, usize)) -> usize {
-    let dx = a.0 as i32 - b.0 as i32;
-    let dy = a.1 as i32 - b.1 as i32;
+    let dx = a.0 as i64 - b.0 as i64;
+    let dy = a.1 as i64 - b.1 as i64;
 
     dx.abs() as usize + dy.abs() as usize
 }
 
-fn solve(input: &String) -> (usize, usize) {
-    let mut universe = Universe::new(input);
-    universe.expand();
+fn solve(input: &String) -> usize {
+    let universe = Universe::new(input, 1000000);
 
     let mut pairs = vec![];
 
@@ -107,14 +98,11 @@ fn solve(input: &String) -> (usize, usize) {
         })
     }
 
-    //println!("{:?}", pairs);
-    //println!("{} len", pairs.len());
-
     let distance_sum = pairs.iter().fold(0, |a, (p1, p2)| {
         a + calculate_distance(*p1, *p2)
     });
 
-    (distance_sum, 0)
+    distance_sum
 }
 
 fn main() {
