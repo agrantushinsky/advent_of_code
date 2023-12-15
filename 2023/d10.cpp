@@ -9,7 +9,6 @@
 #include <queue>
 #include <tuple>
 #include <Windows.h>
-
 enum Direction {
     North,
     East,
