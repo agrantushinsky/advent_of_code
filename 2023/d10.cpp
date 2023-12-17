@@ -20,6 +20,8 @@ struct Tile {
     char character;
     std::optional<std::vector<Direction>> connections;
     bool explored;
+    bool filled;
+    bool outside;
 };
 
 struct Map {
@@ -42,7 +44,7 @@ std::optional<std::vector<Direction>> get_connections(char tile) {
         case 'F':
             return std::make_optional(std::vector<Direction> { Direction::South, Direction::East});
         case 'S':
-            return std::make_optional(std::vector<Direction> { Direction::South, Direction::East}); //  Direction::North, Direction::South
+            return std::make_optional(std::vector<Direction> { Direction::South, Direction::East, Direction::North, Direction::South}); //  
     }
 
     return std::nullopt;
@@ -68,13 +70,12 @@ Tile* get_tile(Map& map, int x, int y) {
     return &map.grid[y][x];
 }
 
-struct bfs_node {
+struct vec2d {
     int x;
     int y;
-    int steps;
 };
 
-int solve(const std::vector<std::string> &lines) {
+std::pair<int, int> solve(const std::vector<std::string> &lines) {
     Map map{};
     for (int i = 0; i < lines.size(); i++) {
         const auto& line = lines[i];
@@ -90,6 +91,7 @@ int solve(const std::vector<std::string> &lines) {
             tile.character = character;
             tile.connections = get_connections(character);
             tile.explored = false; // sanity.
+            tile.filled = false;
 
             row.push_back(tile);
         }
@@ -97,9 +99,6 @@ int solve(const std::vector<std::string> &lines) {
     }
 
     // https://en.wikipedia.org/wiki/Breadth-first_search
-    std::queue<bfs_node> nodes{};
-    bfs_node start = { .x = map.start_x, .y = map.start_y };
-    nodes.push(start);
 
     const std::vector<std::tuple<int, int, Direction>> adjacents_offsets = { 
         std::make_tuple(1, 0, East), 
@@ -108,11 +107,14 @@ int solve(const std::vector<std::string> &lines) {
         std::make_tuple(0, -1, North) 
     };
 
-    int highest_steps = 0;
-
+    bool first = true;
+    std::queue<vec2d> nodes{};
+    vec2d start = { .x = map.start_x, .y = map.start_y };
+    nodes.push(start);
+    int steps = 0;
     while(!nodes.empty()) {
         // Interesting reference.......... maybe i shouldve stayed with rust for day 10
-        const bfs_node/*&*/ node = nodes.front();
+        const vec2d/*&*/ node = nodes.front();
         nodes.pop();
 
         auto current = get_tile(map, node.x, node.y);
@@ -129,11 +131,61 @@ int solve(const std::vector<std::string> &lines) {
             auto adj_tile = get_tile(map, node.x + off_x, node.y + off_y);
             if(adj_tile && !adj_tile->explored && adj_tile->connections.has_value()) {
                 if(std::find(adj_tile->connections.value().begin(), adj_tile->connections.value().end(), reverse_direction(off_dir)) != adj_tile->connections.value().end()) {
-                    bfs_node adj_node = { .x = node.x + off_x, .y = node.y + off_y, .steps = node.steps + 1 };
-                    if(adj_node.steps > highest_steps) {
-                        highest_steps = adj_node.steps;
-                    }
+                    vec2d adj_node = { .x = node.x + off_x, .y = node.y + off_y };
+                    steps++;
                     nodes.push(adj_node);
+                }
+            }
+        }
+    }
+
+    // make all outside tiles
+    std::queue<vec2d> bfs_queue{};
+    for(int x = 0; x < map.grid[0].size(); x++) {
+        bfs_queue.push(vec2d { .x = x, .y = 0});
+        bfs_queue.push(vec2d { .x = x, .y = (int)map.grid.size() - 1});
+    }
+    for(int y = 0; y < map.grid.size(); y++) {
+        bfs_queue.push(vec2d { .x = 0, .y = y});
+        bfs_queue.push(vec2d { .x = (int)map.grid[0].size() - 1, .y = y});
+    }
+    
+    while(!bfs_queue.empty()) {
+        auto curr = bfs_queue.front();
+        bfs_queue.pop();
+
+
+        if(get_tile(map, curr.x, curr.y)->explored) {
+            continue;
+        }
+
+        for(const auto& [off_x, off_y, off_dir] : adjacents_offsets) {
+            auto adj_tile = get_tile(map, curr.x + off_x, curr.y + off_y);
+            if(adj_tile && !adj_tile->explored && !adj_tile->outside) {
+                adj_tile->outside = true;
+                bfs_queue.push(vec2d { .x = curr.x + off_x, .y = curr.y + off_y });
+            }
+        }
+    }
+
+    // for every row: start as in 
+    // flip when hitting a pipe
+    // if on ground && in, fill
+
+    int filled = 0;
+    for(auto& row : map.grid) {
+        bool in = false;
+        for(auto& tile : row) {
+            // if ground
+            if(!tile.explored && !tile.outside) {
+                if(in) {
+                    tile.filled = true;
+                    filled++;
+                }
+            } else if(tile.explored) { // else we are an explored pipe
+                auto c = tile.character;
+                if(c == '|' || c == 'F' || c == '7' || c == 'S') {
+                    in = !in;
                 }
             }
         }
@@ -144,15 +196,20 @@ int solve(const std::vector<std::string> &lines) {
         for(const auto& tile : row) {
             if(tile.explored) {
                 SetConsoleTextAttribute(std_out, BACKGROUND_BLUE);
+            } else if(tile.filled) {
+                SetConsoleTextAttribute(std_out, BACKGROUND_RED);
+            } else if(tile.outside) {
+                SetConsoleTextAttribute(std_out, BACKGROUND_GREEN);
             } else {
                 SetConsoleTextAttribute(std_out, 0);
             }
             std::cout << tile.character;
         }
+        SetConsoleTextAttribute(std_out, 0);
         std::cout << "\n";
     }
 
-    return highest_steps;
+    return std::make_pair(steps / 2, filled);
 }
 
 int main() {
@@ -162,7 +219,8 @@ int main() {
         lines.push_back(temp);
     }
 
-    std::cout << solve(lines) << std::endl;
+    auto solution = solve(lines);
+    std::cout << "steps: " << solution.first << ", filled: " << solution.second <<  std::endl;
 
     return 0;
 }
