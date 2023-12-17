@@ -61,6 +61,7 @@ Direction reverse_direction(Direction dir) {
         case West:
             return East;
     }
+    return North;
 }
 
 Tile* get_tile(Map& map, int x, int y) {
