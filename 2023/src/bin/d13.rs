@@ -1,32 +1,46 @@
 use std::{io, vec};
 
-use itertools::Itertools;
-
 fn evaluate_reflections(map: &Map) -> u32 {
     let terrain = &map.terrain;
 
-    // rows
-    'outer: for y in 1..terrain.len() {
-        let y_range = std::cmp::min(y, terrain.len() - y);
-        for offset in 0..y_range {
-            if terrain[y + offset] != terrain[y - offset - 1] {
-                continue 'outer;
-            }
-        }
-        return y as u32 * 100
-    }
+    // every mirror has at least one smudge
+    // find the single smudge, as calculate the score based on that I guess...
 
-    // columns
-    'outer: for x in 1..terrain[0].len() {
-        let x_range = std::cmp::min(x, terrain[0].len() - x);
-        for offset in 0..x_range {
-            for row in terrain {
-                if row.as_bytes()[x + offset] != row.as_bytes()[x - offset - 1] {
-                    continue 'outer;
+    // rows
+    for y in 1..terrain.len() {
+        let y_range = std::cmp::min(y, terrain.len() - y);
+
+        let mut smudges = 0;
+        for offset in 0..y_range {
+            let r1 = terrain[y + offset];
+            let r2 = terrain[y - offset - 1];
+
+            for x in 0..r1.len() {
+                if r1.as_bytes()[x] != r2.as_bytes()[x] {
+                    smudges += 1;
                 }
             }
         }
-        return x as u32
+        if smudges == 1 {
+            return y as u32 * 100
+        }
+    }
+
+    // columns
+    for x in 1..terrain[0].len() {
+        let x_range = std::cmp::min(x, terrain[0].len() - x);
+
+        let mut smudges = 0;
+        for offset in 0..x_range {
+            for row in terrain {
+                if row.as_bytes()[x + offset] != row.as_bytes()[x - offset - 1] {
+                    smudges += 1;
+                }
+            }
+        }
+        if smudges == 1 {
+            return x as u32
+        }
     }
 
     0
