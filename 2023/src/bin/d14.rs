@@ -1,0 +1,149 @@
+use std::{io, collections::{HashSet, HashMap}, ops::{Add, Sub}, time::SystemTime, alloc::System};
+
+#[derive(Debug, Eq, PartialEq, Clone, Copy, Hash)]
+struct Vec2d {
+    x: i16,
+    y: i16
+}
+
+impl Add for Vec2d {
+    type Output = Self;
+    fn add(self, rhs: Self) -> Self {
+        Self { x: self.x + rhs.x, y: self.y + rhs.y }
+    }
+}
+
+impl Sub for Vec2d {
+    type Output = Self;
+    fn sub(self, rhs: Self) -> Self::Output {
+        Self { x: self.x - rhs.x, y: self.y - rhs.y }
+    }
+}
+
+#[derive(Debug)]
+struct Platform {
+    rounded: HashSet<Vec2d>,
+    squared: HashSet<Vec2d>,
+    dimensions: Vec2d
+}
+
+// Hmmmm...
+impl Platform {
+    fn new() -> Self {
+        Platform {
+            rounded: HashSet::new(),
+            squared: HashSet::new(),
+            dimensions: Vec2d { x: 0, y: 0 }
+        }
+    }
+
+    fn grow_platform(&mut self, pos: &Vec2d) {
+        if pos.x > self.dimensions.x {
+            self.dimensions.x = pos.x;
+        }
+        if pos.y > self.dimensions.y {
+            self.dimensions.y = pos.y;
+        }
+    }
+
+    fn build_platform(input: &String) -> Self {
+        let mut platform = Platform::new();
+        for (y, row) in input.lines().enumerate() {
+            for (x, char) in row.chars().enumerate() {
+                let pos = Vec2d { x: x as i16, y: y as i16 };
+                platform.grow_platform(&pos);
+                match char {
+                    'O' => {
+                        platform.rounded.insert(pos);
+                    }
+                    '#' => {
+                        platform.squared.insert(pos);
+                    }
+                    '.' => {}
+                    _ => panic!("bad input")
+                }
+            }
+        }
+
+        platform
+    }
+
+    fn is_valid_pos(&self, pos: &Vec2d) -> bool {
+        pos.x <= self.dimensions.x &&
+            pos.y <= self.dimensions.y &&
+            pos.x >= 0 &&
+            pos.y >= 0 &&
+            !self.rounded.contains(pos) &&
+            !self.squared.contains(pos)
+    }
+
+    fn apply_tilt(&mut self, direction: &Vec2d) {
+        let mut changes = true;
+        while changes {
+            changes = false;
+
+            // apply a tick of direction
+            for pos in self.rounded.clone().into_iter() {
+                let new_pos = pos + *direction;
+                if self.is_valid_pos(&new_pos) {
+                    self.rounded.remove(&pos);
+                    self.rounded.insert(new_pos);
+                    changes = true;
+                    continue
+                }
+            }
+        }
+    }
+
+    fn calculate_load(&self) -> i32 {
+        self.rounded
+            .iter()
+            .fold(0, |load: i32, pos: &Vec2d| {
+                load + self.dimensions.y as i32 + 1 - pos.y as i32
+            })
+    }
+}
+
+
+fn solve(input: &String) -> i32 {
+    let mut platform = Platform::build_platform(input);
+
+    // apply tilt with the North direction
+    let cycles = &vec![
+        Vec2d { x: 0, y: -1 },
+        Vec2d { x: -1, y: 0 },
+        Vec2d { x: 0, y: 1 },
+        Vec2d { x: 1, y: 0 },
+    ];
+
+    let mut loads: Vec<i32> = vec![];
+
+    // Repeat would be better, but you can't seem to get further information when using .repeat
+    for i in 0..100000 {
+        for direction in cycles {
+            platform.apply_tilt(direction);
+        }
+        loads.push(platform.calculate_load());
+        //println!("load: {}", platform.calculate_load());
+        //println!("\nAfter {} cycles:", i + 1);
+        //platform.draw_map();
+    }
+
+    let load = platform.calculate_load();
+
+    load
+}
+
+fn main() {
+    let mut buffer = String::new();
+    while let Ok(n) = io::stdin().read_line(&mut buffer) {
+        if n == 0 { 
+            break;
+        }
+    }
+
+    let start = SystemTime::now();
+    println!("{:?}", solve(&buffer));
+
+    println!("solved in {}ms", SystemTime::now().duration_since(start).unwrap().as_millis())
+}
