@@ -1,4 +1,4 @@
-use std::{io, collections::{HashSet, HashMap}, ops::{Add, Sub}, time::SystemTime, alloc::System};
+use std::{io, collections::{HashSet, HashMap, hash_map::DefaultHasher}, ops::{Add, Sub}, time::SystemTime, hash::{Hash, Hasher}};
 
 #[derive(Debug, Eq, PartialEq, Clone, Copy, Hash)]
 struct Vec2d {
@@ -116,17 +116,37 @@ fn solve(input: &String) -> i32 {
         Vec2d { x: 1, y: 0 },
     ];
 
-    let mut loads: Vec<i32> = vec![];
+    let mut arrangements = HashMap::<u64, i32>::new();
 
-    // Repeat would be better, but you can't seem to get further information when using .repeat
-    for i in 0..100000 {
+    let max_cycles = 1000000000;
+    let mut cycle_len: Option<i32> = None;
+    let mut i = 0;
+    while i < max_cycles {
         for direction in cycles {
             platform.apply_tilt(direction);
         }
-        loads.push(platform.calculate_load());
-        //println!("load: {}", platform.calculate_load());
-        //println!("\nAfter {} cycles:", i + 1);
-        //platform.draw_map();
+
+        if cycle_len.is_none() {
+            let mut hash = DefaultHasher::new();
+            let rounded: Vec<&Vec2d> = platform.rounded.iter().collect();
+            rounded.hash(&mut hash);
+
+            let arragement_hash = hash.finish();
+            if arrangements.contains_key(&arragement_hash) {
+                cycle_len = Some(i - arrangements.get(&arragement_hash).unwrap());
+                println!("cycle len {}", cycle_len.unwrap());
+                println!("cycle start {}", arrangements.get(&arragement_hash).unwrap());
+                println!("cycle end {}", i);
+                let cycle_skip = cycle_len.unwrap() * ((max_cycles - i) / cycle_len.unwrap());
+                i += cycle_skip;
+
+                println!("i skipped {} cycles", cycle_skip);
+                println!("{} cycles remaining", max_cycles - i);
+            } else{
+                arrangements.insert(arragement_hash, i);
+            }
+        }
+        i += 1;
     }
 
     let load = platform.calculate_load();
