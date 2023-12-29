@@ -22,25 +22,30 @@ impl Sub for Vec2d {
 
 #[derive(Debug, Eq, PartialEq, Clone, Copy, Hash)]
 struct Node {
-    cost: u32,
     position: Vec2d,
     from_dir: Vec2d,
     straight: u32,
 }
 
+#[derive(Debug, Eq, PartialEq, Clone, Copy, Hash)]
+struct State {
+    node: Node,
+    cost: u32,
+}
+
 // Min-heap implementation
-impl Ord for Node {
+impl Ord for State {
     fn cmp(&self, other: &Self) -> std::cmp::Ordering {
         other.cost.cmp(&self.cost)
     }
 }
-impl PartialOrd for Node {
+impl PartialOrd for State {
     fn partial_cmp(&self, other: &Self) -> Option<std::cmp::Ordering> {
         Some(self.cmp(other))
     }
 }
 
-fn get_edges(vertices: &HashMap<Vec2d, u8>, position: &Vec2d) -> Vec<(Vec2d, u32, Vec2d)> {
+fn get_edges(vertices: &HashMap<Vec2d, u8>, current: &Node, min_steps: u32, max_steps: u32) -> Vec<(Node, u32)> {
     let adj_pos_offsets = vec![
         Vec2d { x: -1, y: 0 },
         Vec2d { x: 1, y: 0 },
@@ -48,53 +53,51 @@ fn get_edges(vertices: &HashMap<Vec2d, u8>, position: &Vec2d) -> Vec<(Vec2d, u32
         Vec2d { x: 0, y: 1 },
     ];
 
-    let edges: Vec<(Vec2d, u32, Vec2d)> = adj_pos_offsets.into_iter().filter_map(|pos| { 
-        let adj_edge = *position + pos;
+    let edges: Vec<(Node, u32)> = adj_pos_offsets.into_iter().filter_map(|offset| { 
+        let adj_edge = current.position + offset;
         match vertices.get(&adj_edge) {
-            Some(cost) => Some((adj_edge, *cost as u32, pos)),
+            Some(cost) => { 
+                if current.from_dir == (Vec2d { x: offset.x * -1, y: offset.y * -1 }) {
+                    None
+                } else if current.from_dir != offset && current.straight >= min_steps {
+                    Some((Node { position: adj_edge, from_dir: offset, straight: 1 }, *cost as u32 ))
+                } else if current.from_dir == offset && current.straight < max_steps {
+                    Some((Node { position: adj_edge, from_dir: offset, straight: current.straight + 1 }, *cost as u32))
+                } else {
+                    None
+                }
+            },
             None => None
         }
     }).into_iter().collect();
     edges
 }
 
-fn dijkstras(vertices: &HashMap<Vec2d, u8>, start: Vec2d, end: Vec2d) -> Option<(u32, HashMap<Vec2d, (Vec2d, Vec2d)>)> {
-    let mut dist = 
-        vertices.into_iter().fold(HashMap::new(), |mut dists, (pos, _)| {
-            dists.insert(pos, std::u32::MAX); 
-            dists
-        });
+fn dijkstras(vertices: &HashMap<Vec2d, u8>, start: Vec2d, end: Vec2d, min_steps: u32, max_steps: u32) -> Option<u32> {
+    let mut dist = HashMap::<Node, u32>::new();
 
-    let mut prev = HashMap::<Vec2d, (Vec2d, Vec2d)>::new();
+    let s1 = Node { position: start, from_dir: Vec2d { x: 1, y: 0 }, straight: 0 };
+    let s2 = Node { position: start, from_dir: Vec2d { x: 0, y: 1 }, straight: 0 };
 
-    dist.insert(&start, 0);
+    dist.insert(s1.clone(), 0);
+    dist.insert(s2.clone(), 0);
 
     let mut heap = BinaryHeap::new();
-    heap.push(Node { position: start, cost: 0, from_dir: Vec2d { x: -1, y: 0 }, straight: 0 });
+    heap.push(State { node: s1, cost: 0 });
+    heap.push(State { node: s2, cost: 0 });
 
-    while let Some(node) = heap.pop() {
+    while let Some(State{ node, cost }) = heap.pop() {
         if node.position == end {
-            return Some((node.cost, prev));
+            return Some(cost);
         }
 
-        if node.cost > dist[&node.position] { 
-            continue;
-        }
+        for (adjacent, adjacent_cost) in get_edges(vertices, &node, min_steps, max_steps) {
+            let new_cost = cost + adjacent_cost;
 
-        for (edge_pos, edge_cost, off) in get_edges(vertices, &node.position) {
-            let straight = if off == node.from_dir { node.straight } else { 0 };
-            if straight >= 3 {
-                continue;
-            }
-
-            let next = Node { cost: node.cost + edge_cost, position: edge_pos, from_dir: off, straight: straight + 1 };
-
-            let edge_node = dist.get_mut(&next.position).unwrap();
-            if next.cost < *edge_node {
-                heap.push(next);
-                prev.insert(next.position, (node.position, off));
-                *edge_node = next.cost;
-            }
+            if !dist.contains_key(&adjacent) || new_cost < dist[&adjacent] {
+                heap.push(State { cost: new_cost, node: adjacent });
+                dist.insert(adjacent, new_cost);
+            } 
         }
     }
 
@@ -115,38 +118,15 @@ fn parse_map(input: &String) -> HashMap<Vec2d, u8> {
     map
 }
 
-fn solve(input: &String) -> u32 {
+fn solve(input: &String) -> (u32, u32) {
     let map = parse_map(input);
 
     let end = map.clone().into_iter().max_by_key(|p| p.0.x + p.0.y).unwrap().0;
 
-    let (heat_loss, paths) = dijkstras(&map, Vec2d { x: 0, y: 0 }, end).unwrap();
-    let mut curr = (end, Vec2d { x: 0, y: 0 });
-    let mut path = HashMap::new();
-    while let Some(next) = paths.get(&curr.0) {
-        path.insert(curr.0, curr.1);
-        curr = *next;
-    }
-
-    for y in 0..(end.y + 1) {
-        for x in 0..(end.x + 1) {
-            if let Some(dir) = path.get(&Vec2d { x, y }) {
-                print!("{}", match dir {
-                    Vec2d { x: -1, y: 0 } => "<",
-                    Vec2d { x: 1, y: 0 } => ">",
-                    Vec2d { x: 0, y: -1 } => "^",
-                    Vec2d { x: 0, y: 1 } => "v",
-                    _ => "#"
-                });
-            } else {
-                //print!("{}", map.get(&Vec2d { x, y }).unwrap());
-                print!(".");
-            }
-        }
-        println!();
-    }
-
-    heat_loss
+    (
+        dijkstras(&map, Vec2d { x: 0, y: 0 }, end, 1, 3).unwrap(),
+        dijkstras(&map, Vec2d { x: 0, y: 0 }, end, 4, 10).unwrap()
+    )
 }
 
 fn main() {
