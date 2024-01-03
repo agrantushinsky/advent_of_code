@@ -5,8 +5,8 @@ use itertools::Itertools;
 
 #[derive(Debug, Eq, PartialEq, Clone, Copy, Hash)]
 struct Vec2d {
-    x: i32,
-    y: i32
+    x: i64,
+    y: i64
 }
 
 impl Add for Vec2d {
@@ -34,72 +34,65 @@ fn direction_to_force(direction: Direction) -> Vec2d {
     }
 }
 
-#[derive(Debug, Eq, PartialEq, Clone, Copy, Hash)]
-struct DigPlan {
-    direction: Direction,
-    distance: i32,
-    colour: u64
-}
-
-fn solve(input: &String) -> i32 {
-    let instructions: Vec<DigPlan> = input
+fn solve(input: &String) -> i64 {
+    // Part 1:
+    /*
+    let instructions: Vec<Vec2d> = input
         .lines()
         .map(|line| {
-            let distance = *&line[2..line.find('(').unwrap()-1].parse::<i32>().unwrap();
-            let colour = u64::from_str_radix(&line[line.find('#').unwrap()+1..line.find(')').unwrap()], 16).unwrap();
+            let distance = *&line[2..line.find('(').unwrap()-1].parse::<i64>().unwrap();
+            //let colour = u64::from_str_radix(&line[line.find('#').unwrap()+1..line.find(')').unwrap()], 16).unwrap();
             match line.split_at(1).0 {
-                "U" => DigPlan { direction: Direction::Up, distance, colour },
-                "D" => DigPlan { direction: Direction::Down, distance, colour },
-                "L" => DigPlan { direction: Direction::Left, distance, colour },
-                "R" => DigPlan { direction: Direction::Right, distance, colour },
+                "U" => Vec2d { x: 0, y: -distance },
+                "D" => Vec2d { x: 0, y: distance },
+                "L" => Vec2d { x: -distance, y: 0 },
+                "R" => Vec2d { x: distance, y: 0 },
+                _ => panic!("bad direction")
+            }
+        }).collect(); */
+
+    // Part 2:
+    let instructions: Vec<Vec2d> = input
+        .lines()
+        .map(|line| {
+            let distance = i64::from_str_radix(&line[line.find('#').unwrap()+1..line.find(')').unwrap()-1], 16).unwrap();
+            let direction = &line[line.find(')').unwrap()-1..line.find(')').unwrap()];
+            match direction {
+                "3" => Vec2d { x: 0, y: -distance },
+                "1" => Vec2d { x: 0, y: distance },
+                "2" => Vec2d { x: -distance, y: 0 },
+                "0" => Vec2d { x: distance, y: 0 },
                 _ => panic!("bad direction")
             }
         }).collect();
 
-    let mut path = HashMap::new();
+
     let mut vertices = Vec::new();
     let mut position = Vec2d { x: 0, y: 0 };
-    let mut upper = position;
-    let mut lower = position;
+    let mut perimeter = 0f64;
 
     for ins in instructions {
-        for _ in 0..ins.distance {
-            path.insert(position.clone(), ins.direction);
-            position = position + direction_to_force(ins.direction);
+        perimeter += (ins.x.abs() + ins.y.abs()) as f64;
 
-            if position.x > upper.x  {
-                upper.x = position.x;
-            } 
-            if position.y > upper.y {
-                upper.y = position.y;
-            }
-            if position.x < lower.x  {
-                lower.x = position.x;
-            } 
-            if position.y < lower.y {
-                lower.y = position.y;
-            }
-        }
+        position = position + ins;
         vertices.push(position.clone());
     }
 
     dbg!(&vertices);
 
-    let perimeter = path.len() as f32;
-
     // https://en.wikipedia.org/wiki/Shoelace_formula
-    let mut shoelace_summation = 0f32;
+    let mut shoelace_summation = 0f64;
     let num_vertices = vertices.len();
     for i in 0..num_vertices {
          // A of i
-         shoelace_summation += 0.5f32 * ((vertices[i].y + vertices[(i + 1) % num_vertices].y) * (vertices[i].x - vertices[(i + 1) % num_vertices].x)) as f32;
+         shoelace_summation += 0.5f64 * ((vertices[i].y + vertices[(i + 1) % num_vertices].y) * (vertices[i].x - vertices[(i + 1) % num_vertices].x)) as f64;
     }
 
     dbg!(&perimeter);
     dbg!(&shoelace_summation);
 
     // https://en.wikipedia.org/wiki/Pick%27s_theorem
-    (shoelace_summation + (perimeter / 2f32)) as i32 + 1
+    (shoelace_summation + (perimeter / 2f64)) as i64 + 1
 }
 // 18957 low
 
