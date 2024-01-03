@@ -1,3 +1,4 @@
+use core::num;
 use std::{io, time::SystemTime, ops::Add, collections::{HashSet, HashMap}};
 
 use itertools::Itertools;
@@ -20,7 +21,7 @@ enum Direction {
     Up,
     Down,
     Left,
-    Right
+    Right,
 }
 
 fn direction_to_force(direction: Direction) -> Vec2d {
@@ -56,9 +57,11 @@ fn solve(input: &String) -> i32 {
         }).collect();
 
     let mut path = HashMap::new();
+    let mut vertices = Vec::new();
     let mut position = Vec2d { x: 0, y: 0 };
     let mut upper = position;
     let mut lower = position;
+
     for ins in instructions {
         for _ in 0..ins.distance {
             path.insert(position.clone(), ins.direction);
@@ -77,48 +80,26 @@ fn solve(input: &String) -> i32 {
                 lower.y = position.y;
             }
         }
+        vertices.push(position.clone());
     }
 
-    for y in lower.y..=upper.y {
-        for x in lower.x..=upper.x {
-            match path.get(&Vec2d { x, y }) {
-                //Some(_) => print!("#"),
-                Some(d) => {
-                    match d {
-                        Direction::Up => print!("U"),
-                        Direction::Down => print!("D"),
-                        Direction::Left => print!("L"),
-                        Direction::Right => print!("R"),
-                    }
-                }
-                None => print!(".")
-            }
-        }
-        println!();
+    dbg!(&vertices);
+
+    let perimeter = path.len() as f32;
+
+    // https://en.wikipedia.org/wiki/Shoelace_formula
+    let mut shoelace_summation = 0f32;
+    let num_vertices = vertices.len();
+    for i in 0..num_vertices {
+         // A of i
+         shoelace_summation += 0.5f32 * ((vertices[i].y + vertices[(i + 1) % num_vertices].y) * (vertices[i].x - vertices[(i + 1) % num_vertices].x)) as f32;
     }
 
-    let mut area = path.len() as i32; // start with the perimeter
+    dbg!(&perimeter);
+    dbg!(&shoelace_summation);
 
-    for y in lower.y..=upper.y {
-        let mut walls = path.iter()
-            .filter(|(p, _)| p.y == y)
-            .sorted_by(|(a, _), (b, _)| a.x.cmp(&b.x))
-            .peekable();
-
-        let mut inside = true; // TODO: Here
-        while let Some((left, ldir)) = walls.next() {
-            if walls.peek().is_none() { break; }
-            let (right, rdir) = walls.peek().unwrap();
-            
-            let dist = right.x - left.x;
-            if dist == 1 { continue; }
-            area += dist - 1;
-            _ = walls.next();
-            //println!("Adding {} (r: {} - l: {})", dist - 1, right.x, left.x);
-        }
-    }
-
-    area
+    // https://en.wikipedia.org/wiki/Pick%27s_theorem
+    (shoelace_summation + (perimeter / 2f32)) as i32 + 1
 }
 // 18957 low
 
