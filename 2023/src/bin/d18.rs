@@ -1,7 +1,5 @@
-use core::num;
-use std::{io, time::SystemTime, ops::Add, collections::{HashSet, HashMap}};
+use std::{io, time::SystemTime, ops::Add};
 
-use itertools::Itertools;
 
 #[derive(Debug, Eq, PartialEq, Clone, Copy, Hash)]
 struct Vec2d {
@@ -13,24 +11,6 @@ impl Add for Vec2d {
     type Output = Self;
     fn add(self, rhs: Self) -> Self {
         Self { x: self.x + rhs.x, y: self.y + rhs.y }
-    }
-}
-
-#[derive(Debug, Eq, PartialEq, Clone, Copy, Hash)]
-enum Direction {
-    Up,
-    Down,
-    Left,
-    Right,
-}
-
-fn direction_to_force(direction: Direction) -> Vec2d {
-    use Direction::*;
-    match direction {
-        Up => Vec2d { x: 0, y: -1 },
-        Down => Vec2d { x: 0, y: 1 },
-        Left => Vec2d { x: -1, y: 0 },
-        Right => Vec2d { x: 1, y: 0 },
     }
 }
 
