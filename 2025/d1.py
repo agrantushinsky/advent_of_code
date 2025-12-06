@@ -6,40 +6,32 @@ def solve(lines):
     zero_count_extra = 0
     for i, line in enumerate(lines):
         rot = int(line[1:])
-        last_dial = dial
+        step = 1 if line[0] == 'R' else -1
         if line[0] == 'R':
             print(f"rr: {rot}")
-            dial += rot
         else:
             print(f"lr: {rot}")
-            dial -= rot
 
-        while dial < 0 or dial > 99:
-            if last_dial == 0 and dial < 0 and abs(rot) < 100:
-                zero_count_extra = zero_count_extra - 1
-                last_dial = dial
-                print(f"removing extra 0")
+        while rot > 0:
+            dial = dial + step
+            rot = rot - 1
 
-            if dial > 99:
-                dial = dial - 100;
-                zero_count_extra = zero_count_extra + 1
-                print(f"extra 0")
-            elif dial < 0:
-                dial = 100 + dial;
-                zero_count_extra = zero_count_extra + 1
-                print(f"extra 0")
+            if dial < 0:
+                dial = 99
+            elif dial > 99:
+                dial = 0
 
             if dial == 0:
-                zero_count_extra = zero_count_extra - 1
-                print(f"removing normal extra 0")
+                zero_count_extra = zero_count_extra + 1
 
         if dial == 0:
             zero_count = zero_count + 1
-            print(f"normal 0")
+
+
 
         print(f"dial is now at: {dial}\n")
     
-    return (zero_count, zero_count + zero_count_extra)
+    return (zero_count, zero_count_extra)
 
 if __name__ == "__main__":
     input = open("./d1_input", "r")
